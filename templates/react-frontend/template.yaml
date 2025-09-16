@@ -143,6 +143,7 @@ spec:
           port: ${{ parameters.port }}
           replicas: ${{ parameters.replicas }}
           repoUrl: ${{ parameters.repoUrl | parseRepoUrl }}
+          timestamp: ${{ '' | now }}
           
     - id: publish
       name: Publish to GitHub
