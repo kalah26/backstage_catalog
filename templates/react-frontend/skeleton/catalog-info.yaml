@@ -2,15 +2,12 @@ apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
   name: ${{ values.name }}
-  description: ${{ values.description }}
+  description: React frontend application
   annotations:
-    backstage.io/source-location: url:https://github.com/${{ values.repoUrl.owner }}/${{ values.repoUrl.repo }}
     github.com/project-slug: ${{ values.repoUrl.owner }}/${{ values.repoUrl.repo }}
   tags:
     - react
-    - vite
     - frontend
-    - typescript
     - web
 spec:
   type: website

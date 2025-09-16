@@ -156,12 +156,9 @@ spec:
         gitAuthorName: Backstage Scaffolder
         gitAuthorEmail: scaffolder@backstage.io
         
-    - id: register
-      name: Register Component in Catalog
-      action: catalog:register
-      input:
-        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
-        catalogInfoPath: '/catalog-info.yaml'
+    # Automatic registration disabled due to validation issues
+    # Manual registration: Add the repository URL to Backstage catalog locations
+    # URL: ${{ steps.publish.output.remoteUrl }}
 
   output:
     links:
