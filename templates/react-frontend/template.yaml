@@ -161,18 +161,6 @@ spec:
       input:
         repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
         catalogInfoPath: '/catalog-info.yaml'
-        
-    - id: create-argocd-app
-      name: Create ArgoCD Application (Optional)
-      if: ${{ parameters.deployToKubernetes }}
-      action: fetch:template
-      input:
-        url: ./argocd
-        targetPath: ./argocd-app
-        values:
-          name: ${{ parameters.name }}
-          namespace: ${{ parameters.namespace }}
-          repoUrl: ${{ steps.publish.output.remoteUrl }}
 
   output:
     links:
