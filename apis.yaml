@@ -1,0 +1,194 @@
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: backend-redline-api
+  description: REST API for RedLine profile management system
+  annotations:
+    backstage.io/source-location: url:https://github.com/kalah26/devops_red_line/tree/main/Backend/
+    github.com/project-slug: kalah26/devops_red_line
+  tags:
+    - redline
+    - api
+    - rest
+    - django
+    - profiles
+  labels:
+    system: redline
+    team: admin
+spec:
+  type: openapi
+  lifecycle: production
+  owner: group:default/admin
+  system: redline
+  definition: |
+    openapi: 3.0.1
+    info:
+      title: RedLine API
+      description: Profile management API for DevOps RedLine application
+      version: 1.0.0
+    servers:
+      - url: http://devops-red-line.local/api
+        description: Development server
+      - url: https://devops-red-line-prod.example.com/api
+        description: Production server
+    paths:
+      /profiles/:
+        get:
+          summary: List all profiles
+          description: Retrieve a list of all user profiles
+          responses:
+            '200':
+              description: List of profiles
+              content:
+                application/json:
+                  schema:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Profile'
+        post:
+          summary: Create a new profile
+          description: Create a new user profile
+          requestBody:
+            required: true
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/ProfileCreate'
+          responses:
+            '201':
+              description: Profile created successfully
+              content:
+                application/json:
+                  schema:
+                    $ref: '#/components/schemas/Profile'
+      /profiles/{id}/:
+        get:
+          summary: Get a specific profile
+          description: Retrieve a specific user profile by ID
+          parameters:
+            - name: id
+              in: path
+              required: true
+              schema:
+                type: integer
+          responses:
+            '200':
+              description: Profile details
+              content:
+                application/json:
+                  schema:
+                    $ref: '#/components/schemas/Profile'
+            '404':
+              description: Profile not found
+        put:
+          summary: Update a profile
+          description: Update an existing user profile
+          parameters:
+            - name: id
+              in: path
+              required: true
+              schema:
+                type: integer
+          requestBody:
+            required: true
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/ProfileUpdate'
+          responses:
+            '200':
+              description: Profile updated successfully
+              content:
+                application/json:
+                  schema:
+                    $ref: '#/components/schemas/Profile'
+        delete:
+          summary: Delete a profile
+          description: Delete an existing user profile
+          parameters:
+            - name: id
+              in: path
+              required: true
+              schema:
+                type: integer
+          responses:
+            '204':
+              description: Profile deleted successfully
+    components:
+      schemas:
+        Profile:
+          type: object
+          properties:
+            id:
+              type: integer
+              readOnly: true
+            username:
+              type: string
+              maxLength: 150
+            email:
+              type: string
+              format: email
+            first_name:
+              type: string
+              maxLength: 30
+            last_name:
+              type: string
+              maxLength: 30
+            bio:
+              type: string
+              nullable: true
+            avatar:
+              type: string
+              format: url
+              nullable: true
+            created_at:
+              type: string
+              format: date-time
+              readOnly: true
+            updated_at:
+              type: string
+              format: date-time
+              readOnly: true
+        ProfileCreate:
+          type: object
+          required:
+            - username
+            - email
+          properties:
+            username:
+              type: string
+              maxLength: 150
+            email:
+              type: string
+              format: email
+            first_name:
+              type: string
+              maxLength: 30
+            last_name:
+              type: string
+              maxLength: 30
+            bio:
+              type: string
+            avatar:
+              type: string
+              format: url
+        ProfileUpdate:
+          type: object
+          properties:
+            username:
+              type: string
+              maxLength: 150
+            email:
+              type: string
+              format: email
+            first_name:
+              type: string
+              maxLength: 30
+            last_name:
+              type: string
+              maxLength: 30
+            bio:
+              type: string
+            avatar:
+              type: string
+              format: url

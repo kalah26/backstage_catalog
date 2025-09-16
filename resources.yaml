@@ -1,0 +1,72 @@
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: postgres-redline
+  description: PostgreSQL database for RedLine application data storage
+  annotations:
+    backstage.io/source-location: url:https://github.com/kalah26/devops_red_line/tree/main/manifests/database/
+    github.com/project-slug: kalah26/devops_red_line
+  tags:
+    - redline
+    - database
+    - postgresql
+    - persistent-storage
+  labels:
+    system: redline
+    team: admin
+spec:
+  type: database
+  owner: group:default/admin
+  system: redline
+
+---
+
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: argocd-dev-redline
+  description: ArgoCD Application for RedLine development environment
+  annotations:
+    backstage.io/source-location: url:https://github.com/kalah26/devops_red_line/tree/main/argocd/
+    github.com/project-slug: kalah26/devops_red_line
+    argocd/app-name: devops-red-line-dev
+  tags:
+    - redline
+    - argocd
+    - gitops
+    - development
+    - kubernetes
+  labels:
+    system: redline
+    team: admin
+    environment: development
+spec:
+  type: kubernetes-object
+  owner: group:default/admin
+  system: redline
+
+---
+
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: argocd-prod-redline
+  description: ArgoCD Application for RedLine production environment
+  annotations:
+    backstage.io/source-location: url:https://github.com/kalah26/devops_red_line/tree/main/argocd/
+    github.com/project-slug: kalah26/devops_red_line
+    argocd/app-name: devops-red-line-prod
+  tags:
+    - redline
+    - argocd
+    - gitops
+    - production
+    - kubernetes
+  labels:
+    system: redline
+    team: admin
+    environment: production
+spec:
+  type: kubernetes-object
+  owner: group:default/admin
+  system: redline

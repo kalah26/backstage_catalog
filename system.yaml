@@ -1,0 +1,22 @@
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: redline
+  description: DevOps Red Line - Complete profile management application with React frontend, Django backend, and GitOps deployment
+  annotations:
+    github.com/project-slug: kalah26/devops_red_line
+    backstage.io/source-location: url:https://github.com/kalah26/devops_red_line
+    argocd/app-name: devops-red-line-dev,devops-red-line-prod
+  tags:
+    - devops
+    - redline
+    - profile-management
+    - full-stack
+    - kubernetes
+    - gitops
+  labels:
+    environment: production
+    team: admin
+spec:
+  owner: group:default/admin
+  domain: user-management

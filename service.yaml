@@ -1,0 +1,84 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: backend-redline
+  description: Django REST API backend for profile management
+  annotations:
+    backstage.io/source-location: url:https://github.com/kalah26/devops_red_line/tree/main/Backend/
+    github.com/project-slug: kalah26/devops_red_line
+    backstage.io/techdocs-ref: dir:.
+  tags:
+    - redline
+    - backend
+    - service
+    - python
+    - django
+    - rest-api
+  labels:
+    system: redline
+    team: admin
+spec:
+  type: service
+  lifecycle: production
+  owner: group:default/admin
+  system: redline
+  dependsOn:
+    - resource:default/postgres-redline
+  providesApis:
+    - backend-redline-api
+
+---
+
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: frontend-redline
+  description: React frontend application for user profile management
+  annotations:
+    backstage.io/source-location: url:https://github.com/kalah26/devops_red_line/tree/main/Frontend/
+    github.com/project-slug: kalah26/devops_red_line
+    backstage.io/techdocs-ref: dir:.
+  tags:
+    - redline
+    - frontend
+    - web
+    - react
+    - vite
+    - spa
+  labels:
+    system: redline
+    team: admin
+spec:
+  type: website
+  lifecycle: production
+  owner: group:default/admin
+  system: redline
+  consumesApis:
+    - backend-redline-api
+
+---
+
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: infrastructure-redline
+  description: Kubernetes manifests and infrastructure definitions for RedLine deployment
+  annotations:
+    backstage.io/source-location: url:https://github.com/kalah26/devops_red_line/tree/main/manifests/
+    github.com/project-slug: kalah26/devops_red_line
+    argocd/app-name: devops-red-line-dev,devops-red-line-prod
+  tags:
+    - redline
+    - infrastructure
+    - kubernetes
+    - kustomize
+    - gitops
+    - iac
+  labels:
+    system: redline
+    team: admin
+spec:
+  type: service
+  lifecycle: production
+  owner: group:default/admin
+  system: redline
