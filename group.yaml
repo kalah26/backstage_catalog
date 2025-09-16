@@ -1,0 +1,14 @@
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  name: admin
+  description: The admin business unit
+spec:
+  type: admin-group
+  profile:
+    displayName: Admin
+    email: admin@example.com
+    picture: https://example.com/groups/bu-admin.jpeg
+  parent: ops
+  children: [backstage, other]
+  members: [kalah26]
