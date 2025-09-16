@@ -2,21 +2,18 @@ apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
   name: ${{ values.name }}
-  description: ${{ values.description }}
+  description: "${{ values.description or 'React frontend application created from template' }}"
   annotations:
     backstage.io/source-location: url:https://${{ values.repoUrl.host }}/${{ values.repoUrl.owner }}/${{ values.repoUrl.repo }}
     github.com/project-slug: ${{ values.repoUrl.owner }}/${{ values.repoUrl.repo }}
-    backstage.io/techdocs-ref: dir:.
   tags:
     - react
-    - vite  
+    - vite
     - frontend
     - typescript
-    - ${{ values.uiLibrary }}
-  labels:
-    system: ${{ values.system }}
+    - web
 spec:
   type: website
   lifecycle: production
-  owner: ${{ values.owner }}
-  system: ${{ values.system }}
+  owner: group:default/admin
+  system: default
