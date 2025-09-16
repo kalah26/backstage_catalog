@@ -1,0 +1,43 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: ${{ values.name }}
+  description: ${{ values.description }}
+  annotations:
+    backstage.io/source-location: url:${{ values.repoUrl.host }}/${{ values.repoUrl.owner }}/${{ values.repoUrl.repo }}
+    github.com/project-slug: ${{ values.repoUrl.owner }}/${{ values.repoUrl.repo }}
+    {% if values.deployToKubernetes %}
+    backstage.io/kubernetes-id: ${{ values.name }}
+    backstage.io/kubernetes-namespace: ${{ values.namespace }}
+    {% endif %}
+    backstage.io/techdocs-ref: dir:.
+  tags:
+    - react
+    - vite
+    - frontend
+    - typescript
+    {% if values.uiLibrary == 'tailwind' %}
+    - tailwind
+    {% elif values.uiLibrary == 'material-ui' %}
+    - material-ui
+    {% elif values.uiLibrary == 'antd' %}
+    - antd
+    {% endif %}
+    {% if values.enableAuth %}
+    - authentication
+    {% endif %}
+    {% if values.enableRouting %}
+    - routing
+    {% endif %}
+  labels:
+    system: ${{ values.system }}
+    team: ${{ values.owner }}
+spec:
+  type: website
+  lifecycle: production
+  owner: ${{ values.owner }}
+  system: ${{ values.system }}
+  {% if values.apiUrl %}
+  consumesApis:
+    - ${{ values.system }}-api
+  {% endif %}

@@ -1,0 +1,53 @@
+{
+  "name": "${{ values.name }}",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "${{ values.description }}",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage"
+  },
+  "dependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "axios": "^1.8.4",
+    {% if values.enableRouting %}
+    "react-router": "^7.4.1",
+    "react-router-dom": "^7.5.0",
+    {% endif %}
+    {% if values.enableAuth %}
+    "jwt-decode": "^4.0.0",
+    {% endif %}
+    {% if values.uiLibrary == 'tailwind' %}
+    "@tailwindcss/vite": "^4.1.1",
+    "tailwindcss": "^4.1.1",
+    "daisyui": "^5.0.11",
+    {% elif values.uiLibrary == 'material-ui' %}
+    "@mui/material": "^5.15.0",
+    "@emotion/react": "^11.11.0",
+    "@emotion/styled": "^11.11.0",
+    {% elif values.uiLibrary == 'antd' %}
+    "antd": "^5.12.0",
+    {% endif %}
+    "@types/node": "^20.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.21.0",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "@vitejs/plugin-react": "^4.3.4",
+    "eslint": "^9.21.0",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "eslint-plugin-react-refresh": "^0.4.19",
+    "globals": "^15.15.0",
+    "vite": "^6.2.0",
+    "vitest": "^1.0.0",
+    "@vitest/coverage-v8": "^1.0.0",
+    "typescript": "^5.3.0"
+  }
+}

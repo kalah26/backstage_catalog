@@ -1,0 +1,31 @@
+# Stage 1: Build the React app
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Copy package files first for better caching
+COPY package*.json ./
+RUN npm install
+
+# Copy all files and build the app
+COPY . .
+RUN npm run build
+
+# Stage 2: Serve the built app with Nginx
+FROM nginx:alpine
+
+# Copy the built app from the builder stage
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# Copy custom nginx configuration
+COPY nginx.conf /etc/nginx/conf.d/default.conf 
+
+# Copy the environment injection script
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
+# Expose port 80 (default for HTTP)
+EXPOSE 80
+
+# Use our custom entrypoint that injects environment variables
+ENTRYPOINT ["/bin/sh", "/docker-entrypoint.sh"]

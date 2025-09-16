@@ -1,0 +1,20 @@
+{% if values.deployToKubernetes %}
+apiVersion: v1
+kind: Service
+metadata:
+  name: ${{ values.name }}-frontend-service
+  namespace: ${{ values.namespace }}
+  labels:
+    app: ${{ values.name }}-frontend
+    component: frontend
+    system: ${{ values.system }}
+spec:
+  selector:
+    app: ${{ values.name }}-frontend
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+    name: http
+  type: ClusterIP
+{% endif %}

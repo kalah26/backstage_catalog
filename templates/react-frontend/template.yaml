@@ -1,0 +1,218 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: react-frontend-template
+  title: React Frontend Application
+  description: Create a new React frontend application with Vite, TypeScript, and Docker support
+  annotations:
+    backstage.io/source-location: url:https://github.com/kalah26/backstage_catalog/tree/main/templates/react-frontend
+  tags:
+    - react
+    - vite
+    - frontend
+    - typescript
+    - docker
+    - kubernetes
+    - redline-stack
+spec:
+  owner: group:default/admin
+  type: service
+  
+  parameters:
+    - title: Basic Information
+      required:
+        - name
+        - description
+        - owner
+      properties:
+        name:
+          title: Name
+          type: string
+          description: Unique name of the frontend application
+          pattern: '^[a-z0-9-]+$'
+          ui:autofocus: true
+          ui:help: 'Use lowercase letters, numbers, and hyphens only'
+        description:
+          title: Description
+          type: string
+          description: Brief description of what this frontend application does
+        owner:
+          title: Owner
+          type: string
+          description: Owner of the component
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+              
+    - title: Application Configuration
+      required:
+        - system
+        - apiUrl
+      properties:
+        system:
+          title: System
+          type: string
+          description: System this frontend belongs to
+          default: redline
+          enum:
+            - redline
+            - user-management
+            - auth-system
+            - custom
+        apiUrl:
+          title: Backend API URL
+          type: string
+          description: URL of the backend API this frontend will consume
+          default: http://backend-api.local/api
+        enableAuth:
+          title: Enable Authentication
+          type: boolean
+          description: Include authentication setup in the frontend
+          default: true
+        enableRouting:
+          title: Enable React Router
+          type: boolean
+          description: Include React Router for navigation
+          default: true
+        uiLibrary:
+          title: UI Library
+          type: string
+          description: Choose a UI component library
+          default: tailwind
+          enum:
+            - tailwind
+            - material-ui
+            - antd
+            - none
+            
+    - title: Deployment Configuration
+      properties:
+        deployToKubernetes:
+          title: Deploy to Kubernetes
+          type: boolean
+          description: Generate Kubernetes deployment manifests
+          default: true
+        namespace:
+          title: Kubernetes Namespace
+          type: string
+          description: Kubernetes namespace for deployment
+          default: default
+        port:
+          title: Application Port
+          type: number
+          description: Port the application will run on
+          default: 3000
+        replicas:
+          title: Number of Replicas
+          type: number
+          description: Number of pod replicas for production
+          default: 1
+          
+    - title: Repository Information
+      required:
+        - repoUrl
+      properties:
+        repoUrl:
+          title: Repository Location
+          type: string
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts:
+              - github.com
+
+  steps:
+    - id: fetch-base
+      name: Fetch Base Template
+      action: fetch:template
+      input:
+        url: ./skeleton
+        copyWithoutTemplating:
+          - .github/workflows/*
+        values:
+          name: ${{ parameters.name }}
+          description: ${{ parameters.description }}
+          owner: ${{ parameters.owner }}
+          system: ${{ parameters.system }}
+          apiUrl: ${{ parameters.apiUrl }}
+          enableAuth: ${{ parameters.enableAuth }}
+          enableRouting: ${{ parameters.enableRouting }}
+          uiLibrary: ${{ parameters.uiLibrary }}
+          deployToKubernetes: ${{ parameters.deployToKubernetes }}
+          namespace: ${{ parameters.namespace }}
+          port: ${{ parameters.port }}
+          replicas: ${{ parameters.replicas }}
+          repoUrl: ${{ parameters.repoUrl | parseRepoUrl }}
+          
+    - id: publish
+      name: Publish to GitHub
+      action: publish:github
+      input:
+        allowedHosts: 
+          - github.com
+        description: This is ${{ parameters.name }}
+        repoUrl: ${{ parameters.repoUrl }}
+        defaultBranch: main
+        gitCommitMessage: 'Initial commit: React frontend application ${{ parameters.name }}'
+        gitAuthorName: Backstage Scaffolder
+        gitAuthorEmail: scaffolder@backstage.io
+        
+    - id: register
+      name: Register Component in Catalog
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
+        catalogInfoPath: '/catalog-info.yaml'
+        
+    - id: create-argocd-app
+      name: Create ArgoCD Application (Optional)
+      if: ${{ parameters.deployToKubernetes }}
+      action: fetch:template
+      input:
+        url: ./argocd
+        targetPath: ./argocd-app
+        values:
+          name: ${{ parameters.name }}
+          namespace: ${{ parameters.namespace }}
+          repoUrl: ${{ steps.publish.output.remoteUrl }}
+
+  output:
+    links:
+      - title: Repository
+        url: ${{ steps.publish.output.remoteUrl }}
+      - title: Open in catalog
+        icon: catalog
+        entityRef: ${{ steps.register.output.entityRef }}
+    text:
+      - title: More information
+        content: |
+          **Your React frontend application has been created successfully!**
+          
+          ## Next Steps:
+          1. Clone the repository: `git clone ${{ steps.publish.output.remoteUrl }}`
+          2. Install dependencies: `npm install`
+          3. Start development server: `npm run dev`
+          4. Build for production: `npm run build`
+          
+          ## Features Included:
+          - ⚛️ React 18 with TypeScript
+          - ⚡ Vite for fast development
+          - 🐳 Docker configuration
+          {% if parameters.deployToKubernetes %}
+          - ☸️ Kubernetes deployment manifests
+          {% endif %}
+          {% if parameters.enableAuth %}
+          - 🔐 Authentication setup
+          {% endif %}
+          {% if parameters.enableRouting %}
+          - 🛣️ React Router for navigation
+          {% endif %}
+          {% if parameters.uiLibrary != 'none' %}
+          - 🎨 {{ parameters.uiLibrary }} UI components
+          {% endif %}
+          
+          ## Important URLs:
+          - Development: http://localhost:{{ parameters.port }}
+          - API Backend: {{ parameters.apiUrl }}
+          
+          The application is now registered in the Backstage catalog and ready for development!
