@@ -66,8 +66,6 @@ metadata:
   annotations:
     backstage.io/kubernetes-id: redline-test-app
     backstage.io/kubernetes-namespace: default
-    crossplane.io/composite-resource-definition: apps.example.crossplane.io
-    crossplane.io/composition: app-python
   tags:
     - crossplane
     - python
@@ -75,7 +73,7 @@ metadata:
     - claim
     - redline
 spec:
-  type: crossplane-claim
+  type: service
   owner: group:default/admin
   system: redline
   lifecycle: production
