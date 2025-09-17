@@ -1,10 +1,13 @@
 apiVersion: example.crossplane.io/v1
 kind: App
 metadata:
-  name: test-app
+  name: redline-test-app
   namespace: default
+  labels:
+    app.kubernetes.io/name: redline-test-app
+    app.kubernetes.io/part-of: redline
 spec:
-  image: nginx:latest
+  image: "nginx:latest"
   crossplane:
     compositionRef:
       name: app-python
