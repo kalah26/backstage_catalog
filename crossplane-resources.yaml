@@ -1,0 +1,106 @@
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: crossplane-provider-aws-s3
+  description: AWS S3 Provider for Crossplane
+  annotations:
+    backstage.io/kubernetes-id: crossplane-contrib-provider-aws-s3
+    backstage.io/kubernetes-namespace: crossplane-system
+    crossplane.io/provider: aws-s3
+  tags:
+    - crossplane
+    - aws
+    - s3
+    - infrastructure
+    - provider
+spec:
+  type: crossplane-provider
+  owner: group:default/admin
+  system: redline
+  dependsOn:
+    - resource:default/crossplane-core
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: crossplane-provider-aws-family
+  description: AWS Family Provider for Crossplane
+  annotations:
+    backstage.io/kubernetes-id: crossplane-contrib-provider-family-aws
+    backstage.io/kubernetes-namespace: crossplane-system
+    crossplane.io/provider: aws-family
+  tags:
+    - crossplane
+    - aws
+    - infrastructure
+    - provider
+spec:
+  type: crossplane-provider
+  owner: group:default/admin
+  system: redline
+  dependsOn:
+    - resource:default/crossplane-core
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: crossplane-core
+  description: Crossplane Core System
+  annotations:
+    backstage.io/kubernetes-id: crossplane
+    backstage.io/kubernetes-namespace: crossplane-system
+  tags:
+    - crossplane
+    - core
+    - infrastructure
+spec:
+  type: crossplane-core
+  owner: group:default/admin
+  system: redline
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: app-python-claim
+  description: Python App Claim Template using Crossplane
+  annotations:
+    backstage.io/kubernetes-id: app-python-claim
+    crossplane.io/composite-resource-definition: apps.example.crossplane.io
+    crossplane.io/composition: app-python
+  tags:
+    - crossplane
+    - python
+    - app
+    - claim
+    - template
+spec:
+  type: crossplane-claim
+  owner: group:default/admin
+  system: redline
+  lifecycle: production
+  dependsOn:
+    - resource:default/crossplane-provider-aws-family
+    - resource:default/crossplane-provider-aws-s3
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: app-python-composition
+  description: Crossplane Composition for Python Applications
+  annotations:
+    backstage.io/kubernetes-id: app-python
+    backstage.io/kubernetes-namespace: crossplane-system
+    crossplane.io/composition: app-python
+    crossplane.io/composite-resource-definition: apps.example.crossplane.io
+  tags:
+    - crossplane
+    - composition
+    - python
+    - infrastructure
+spec:
+  type: crossplane-composition
+  owner: group:default/admin
+  system: redline
+  dependsOn:
+    - resource:default/crossplane-provider-aws-family
+    - resource:default/crossplane-provider-aws-s3

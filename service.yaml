@@ -72,6 +72,8 @@ metadata:
     backstage.io/source-location: url:https://github.com/kalah26/devops_red_line/tree/main/manifests/
     github.com/project-slug: kalah26/devops_red_line
     argocd/app-name: devops-red-line-dev,devops-red-line-prod
+    backstage.io/kubernetes-id: infrastructure-redline
+    backstage.io/kubernetes-namespace: default
   tags:
     - redline
     - infrastructure
@@ -87,3 +89,7 @@ spec:
   lifecycle: production
   owner: group:default/admin
   system: redline
+  dependsOn:
+    - resource:default/crossplane-core
+    - component:default/database-claim-template
+    - component:default/network-infrastructure-xr
