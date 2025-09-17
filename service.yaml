@@ -7,6 +7,8 @@ metadata:
     backstage.io/source-location: url:https://github.com/kalah26/devops_red_line/tree/main/Backend/
     github.com/project-slug: kalah26/devops_red_line
     backstage.io/techdocs-ref: dir:.
+    backstage.io/kubernetes-id: backend-redline
+    backstage.io/kubernetes-namespace: default
   tags:
     - redline
     - backend
@@ -38,6 +40,9 @@ metadata:
     backstage.io/source-location: url:https://github.com/kalah26/devops_red_line/tree/main/Frontend/
     github.com/project-slug: kalah26/devops_red_line
     backstage.io/techdocs-ref: dir:.
+    backstage.io/kubernetes-id: frontend-redline
+    backstage.io/kubernetes-namespace: default
+
   tags:
     - redline
     - frontend
