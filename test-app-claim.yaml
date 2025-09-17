@@ -1,0 +1,10 @@
+apiVersion: example.crossplane.io/v1
+kind: App
+metadata:
+  name: test-app
+  namespace: default
+spec:
+  image: nginx:latest
+  crossplane:
+    compositionRef:
+      name: app-python
