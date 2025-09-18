@@ -1,0 +1,116 @@
+# ArgoCD Application Set for Dynamic Environment Management
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: backstage-environments
+  namespace: argocd
+  annotations:
+    backstage.io/managed-by: scaffolder
+spec:
+  generators:
+  # Git directory generator to detect new environments
+  - git:
+      repoURL: https://gitlab.com/kalah26/devops_red_line.git
+      revision: HEAD
+      directories:
+      - path: environments/*/manifests
+      - path: manifests/overlays/*
+  
+  # SCM Provider generator for dynamic repository discovery
+  - scmProvider:
+      gitlab:
+        group: kalah26
+        includeSubgroups: true
+        api: https://gitlab.com/api/v4
+        tokenRef:
+          secretName: gitlab-token
+          key: token
+      filters:
+      - repositoryMatch: ".*backstage-env-.*"
+      - pathsExist: ["manifests/overlays/development"]
+
+  template:
+    metadata:
+      name: '{{path.basename}}-app'
+      namespace: argocd
+      labels:
+        backstage.io/environment: '{{path.basename}}'
+        argocd.argoproj.io/application-set: backstage-environments
+      annotations:
+        backstage.io/created-by: scaffolder
+        argocd.argoproj.io/sync-wave: "1"
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+    spec:
+      project: default
+      source:
+        repoURL: '{{url}}'
+        targetRevision: HEAD
+        path: '{{path}}'
+        kustomize:
+          images:
+          - 'genecodo/devops-red-line-backend:{{revision}}'
+          - 'genecodo/devops-red-line-frontend:{{revision}}'
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: '{{path.basename}}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+          allowEmpty: false
+        syncOptions:
+          - CreateNamespace=true
+          - PrunePropagationPolicy=foreground
+          - PruneLast=true
+          - ApplyOutOfSyncOnly=true
+        retry:
+          limit: 5
+          backoff:
+            duration: 5s
+            factor: 2
+            maxDuration: 3m
+      revisionHistoryLimit: 10
+---
+# ArgoCD Project for Backstage-managed environments
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: backstage-environments
+  namespace: argocd
+  annotations:
+    backstage.io/managed-by: scaffolder
+spec:
+  description: "Project for Backstage-managed environments"
+  sourceRepos:
+  - 'https://gitlab.com/kalah26/*'
+  - 'https://github.com/sonatel-project/*'
+  destinations:
+  - namespace: '*'
+    server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+  - group: ""
+    kind: Namespace
+  - group: storage.k8s.io
+    kind: StorageClass
+  - group: networking.k8s.io
+    kind: Ingress
+  namespaceResourceWhitelist:
+  - group: "*"
+    kind: "*"
+  roles:
+  - name: developer
+    description: Developer access to environments
+    policies:
+    - p, proj:backstage-environments:developer, applications, get, backstage-environments/*, allow
+    - p, proj:backstage-environments:developer, applications, sync, backstage-environments/*, allow
+    - p, proj:backstage-environments:developer, applications, action/*, backstage-environments/*, allow
+    groups:
+    - backstage:developers
+  - name: admin
+    description: Admin access to environments
+    policies:
+    - p, proj:backstage-environments:admin, applications, *, backstage-environments/*, allow
+    - p, proj:backstage-environments:admin, repositories, *, *, allow
+    groups:
+    - backstage:admins

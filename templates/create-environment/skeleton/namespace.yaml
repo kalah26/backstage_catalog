@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ${{ values.environmentName }}
+  labels:
+    backstage.io/environment: ${{ values.environmentName }}
+    backstage.io/owner: ${{ values.owner }}
+    environment: development
+    managed-by: backstage
+  annotations:
+    backstage.io/created-by: scaffolder
+    backstage.io/created-at: ${{ "now" | date("iso") }}
+    description: "${{ values.description }}"

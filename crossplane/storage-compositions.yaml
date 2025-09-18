@@ -1,0 +1,133 @@
+# Storage Composition
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xstorages.storage.crossplane.io
+spec:
+  group: storage.crossplane.io
+  names:
+    kind: XStorage
+    plural: xstorages
+  claimNames:
+    kind: StorageClaim
+    plural: storageclaims
+  versions:
+  - name: v1alpha1
+    served: true
+    referenceable: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              parameters:
+                type: object
+                properties:
+                  size:
+                    type: string
+                  storageClass:
+                    type: string
+                  environmentName:
+                    type: string
+                  accessMode:
+                    type: string
+                    default: ReadWriteOnce
+                required:
+                - size
+                - storageClass
+                - environmentName
+            required:
+            - parameters
+          status:
+            type: object
+            properties:
+              pvcName:
+                type: string
+              storageClass:
+                type: string
+---
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: storage-composition
+spec:
+  compositeTypeRef:
+    apiVersion: storage.crossplane.io/v1alpha1
+    kind: XStorage
+  
+  functions:
+  - name: create-storage
+    type: function
+    step: create-pvc
+    input:
+      apiVersion: pt.fn.crossplane.io/v1beta1
+      kind: Resources
+      resources:
+      - name: persistent-volume-claim
+        base:
+          apiVersion: v1
+          kind: PersistentVolumeClaim
+          metadata:
+            name: app-storage
+          spec:
+            accessModes:
+            - ReadWriteOnce
+            storageClassName: standard
+            resources:
+              requests:
+                storage: 5Gi
+        patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.size
+          toFieldPath: spec.resources.requests.storage
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.storageClass
+          toFieldPath: spec.storageClassName
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.accessMode
+          toFieldPath: spec.accessModes[0]
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.environmentName
+          toFieldPath: metadata.namespace
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.environmentName
+          toFieldPath: metadata.name
+          transforms:
+          - type: string
+            string:
+              fmt: "%s-app-storage"
+        - type: ToCompositeFieldPath
+          fromFieldPath: metadata.name
+          toFieldPath: status.pvcName
+        - type: ToCompositeFieldPath
+          fromFieldPath: spec.storageClassName
+          toFieldPath: status.storageClass
+      
+      - name: storage-class
+        base:
+          apiVersion: storage.k8s.io/v1
+          kind: StorageClass
+          metadata:
+            name: environment-storage
+          provisioner: kubernetes.io/no-provisioner
+          volumeBindingMode: WaitForFirstConsumer
+          allowVolumeExpansion: true
+        patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.environmentName
+          toFieldPath: metadata.name
+          transforms:
+          - type: string
+            string:
+              fmt: "%s-storage-class"
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.storageClass
+          toFieldPath: provisioner
+          transforms:
+          - type: map
+            map:
+              standard: kubernetes.io/no-provisioner
+              fast-ssd: kubernetes.io/aws-ebs
+              slow-hdd: kubernetes.io/aws-ebs

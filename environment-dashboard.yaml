@@ -1,0 +1,97 @@
+# Environment Status Dashboard Configuration
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: environment-dashboard
+  description: Dashboard for monitoring environment status
+  annotations:
+    backstage.io/kubernetes-id: environment-dashboard
+    backstage.io/techdocs-ref: dir:.
+  tags:
+    - dashboard
+    - monitoring
+    - environment
+spec:
+  type: dashboard
+  owner: group:default/admin
+  system: redline
+  lifecycle: production
+  providesApis:
+    - environment-status-api
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: environment-status-api
+  description: API for environment status monitoring
+spec:
+  type: rest
+  owner: group:default/admin
+  system: redline
+  lifecycle: production
+  definition: |
+    openapi: 3.0.0
+    info:
+      title: Environment Status API
+      version: 1.0.0
+    paths:
+      /environments/{environmentName}/status:
+        get:
+          summary: Get environment status
+          parameters:
+            - name: environmentName
+              in: path
+              required: true
+              schema:
+                type: string
+          responses:
+            '200':
+              description: Environment status
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      environmentName:
+                        type: string
+                      namespace:
+                        type: object
+                        properties:
+                          status: 
+                            type: string
+                          ready:
+                            type: boolean
+                      database:
+                        type: object
+                        properties:
+                          status:
+                            type: string
+                          endpoint:
+                            type: string
+                          ready:
+                            type: boolean
+                      storage:
+                        type: object
+                        properties:
+                          pvcStatus:
+                            type: string
+                          size:
+                            type: string
+                      argocd:
+                        type: object
+                        properties:
+                          syncStatus:
+                            type: string
+                          healthStatus:
+                            type: string
+                          lastSync:
+                            type: string
+                      cicd:
+                        type: object
+                        properties:
+                          lastPipeline:
+                            type: string
+                          status:
+                            type: string
+                          buildNumber:
+                            type: string

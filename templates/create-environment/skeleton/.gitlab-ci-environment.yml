@@ -1,0 +1,187 @@
+# GitLab CI Template for Environment Deployment
+stages:
+  - validate
+  - provision
+  - deploy
+  - monitor
+
+variables:
+  KUSTOMIZE_VERSION: "4.5.7"
+  KUBECTL_VERSION: "1.28.2"
+
+# Validate environment parameters
+validate:environment:
+  stage: validate
+  image: alpine:latest
+  script:
+    - echo "🔍 Validating environment parameters..."
+    - |
+      if [ -z "$ENVIRONMENT_NAME" ]; then
+        echo "❌ Error: ENVIRONMENT_NAME not set"
+        exit 1
+      fi
+    - echo "✅ Environment name: $ENVIRONMENT_NAME"
+    - echo "✅ Deploy namespace: ${DEPLOY_NAMESPACE:-$ENVIRONMENT_NAME}"
+    - echo "✅ Validation passed"
+  only:
+    variables:
+      - $ENVIRONMENT_NAME
+
+# Provision infrastructure via Crossplane
+provision:infrastructure:
+  stage: provision
+  image: 
+    name: alpine/k8s:$KUBECTL_VERSION
+    entrypoint: [""]
+  before_script:
+    - kubectl version --client
+    - mkdir -p ~/.kube
+    - echo "$KUBE_CONFIG" | base64 -d > ~/.kube/config
+  script:
+    - echo "🏗️ Provisioning infrastructure for $ENVIRONMENT_NAME..."
+    
+    # Apply namespace
+    - kubectl apply -f - <<EOF
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: $ENVIRONMENT_NAME
+        labels:
+          backstage.io/environment: $ENVIRONMENT_NAME
+          managed-by: backstage-scaffolder
+      EOF
+    
+    # Apply database claim if needed
+    - |
+      if [ "$DATABASE_NEEDED" = "true" ] && [ "$USE_EXISTING_DATABASE" != "true" ]; then
+        echo "📊 Creating database claim..."
+        kubectl apply -f - <<EOF
+      apiVersion: database.crossplane.io/v1alpha1
+      kind: DatabaseClaim
+      metadata:
+        name: $ENVIRONMENT_NAME-db-claim
+        namespace: $ENVIRONMENT_NAME
+      spec:
+        parameters:
+          engine: ${DATABASE_TYPE:-postgresql}
+          storageSize: ${DATABASE_SIZE:-10Gi}
+          instanceClass: db.t3.micro
+          environmentName: $ENVIRONMENT_NAME
+        compositionRef:
+          name: database-composition-${DATABASE_TYPE:-postgresql}
+        writeConnectionSecretsToNamespace: $ENVIRONMENT_NAME
+        writeConnectionSecretToRef:
+          name: $ENVIRONMENT_NAME-db-connection
+      EOF
+      fi
+    
+    # Apply storage claim
+    - echo "💾 Creating storage claim..."
+    - kubectl apply -f - <<EOF
+      apiVersion: storage.crossplane.io/v1alpha1
+      kind: StorageClaim
+      metadata:
+        name: $ENVIRONMENT_NAME-storage-claim
+        namespace: $ENVIRONMENT_NAME
+      spec:
+        parameters:
+          size: ${STORAGE_SIZE:-5Gi}
+          storageClass: ${STORAGE_CLASS:-standard}
+          environmentName: $ENVIRONMENT_NAME
+        compositionRef:
+          name: storage-composition
+        writeConnectionSecretsToNamespace: $ENVIRONMENT_NAME
+      EOF
+    
+    # Create ArgoCD application
+    - echo "🔄 Creating ArgoCD application..."
+    - kubectl apply -f - <<EOF
+      apiVersion: argoproj.io/v1alpha1
+      kind: Application
+      metadata:
+        name: $ENVIRONMENT_NAME-app
+        namespace: argocd
+        finalizers:
+          - resources-finalizer.argocd.argoproj.io
+      spec:
+        project: default
+        source:
+          repoURL: $CI_PROJECT_URL
+          targetRevision: HEAD
+          path: manifests/overlays/development
+        destination:
+          server: https://kubernetes.default.svc
+          namespace: $ENVIRONMENT_NAME
+        syncPolicy:
+          automated:
+            prune: true
+            selfHeal: true
+          syncOptions:
+            - CreateNamespace=false
+      EOF
+    
+    - echo "✅ Infrastructure provisioning completed"
+  dependencies:
+    - validate:environment
+  only:
+    variables:
+      - $ENVIRONMENT_NAME
+
+# Deploy application using existing pipeline
+deploy:application:
+  stage: deploy
+  trigger:
+    include: .gitlab-ci.yml
+    strategy: depend
+  variables:
+    DEPLOY_NAMESPACE: $ENVIRONMENT_NAME
+  dependencies:
+    - provision:infrastructure
+  only:
+    variables:
+      - $ENVIRONMENT_NAME
+
+# Monitor deployment status
+monitor:status:
+  stage: monitor
+  image: 
+    name: alpine/k8s:$KUBECTL_VERSION
+    entrypoint: [""]
+  before_script:
+    - kubectl version --client
+    - mkdir -p ~/.kube
+    - echo "$KUBE_CONFIG" | base64 -d > ~/.kube/config
+  script:
+    - echo "📊 Monitoring deployment status for $ENVIRONMENT_NAME..."
+    
+    # Check namespace
+    - kubectl get namespace $ENVIRONMENT_NAME -o json | jq '.status'
+    
+    # Check database status if exists
+    - |
+      if kubectl get databaseclaim $ENVIRONMENT_NAME-db-claim -n $ENVIRONMENT_NAME >/dev/null 2>&1; then
+        echo "📊 Database status:"
+        kubectl get databaseclaim $ENVIRONMENT_NAME-db-claim -n $ENVIRONMENT_NAME -o jsonpath='{.status.conditions[*].type}: {.status.conditions[*].status}'
+        echo
+      fi
+    
+    # Check storage status
+    - echo "💾 Storage status:"
+    - kubectl get pvc -n $ENVIRONMENT_NAME
+    
+    # Check ArgoCD application status
+    - echo "🔄 ArgoCD application status:"
+    - kubectl get application $ENVIRONMENT_NAME-app -n argocd -o jsonpath='{.status.sync.status}: {.status.health.status}'
+    - echo
+    
+    # Check pods status
+    - echo "🚀 Pods status:"
+    - kubectl get pods -n $ENVIRONMENT_NAME
+    
+    - echo "✅ Monitoring completed"
+  dependencies:
+    - deploy:application
+  allow_failure: true
+  only:
+    variables:
+      - $ENVIRONMENT_NAME

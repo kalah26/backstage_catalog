@@ -1,0 +1,37 @@
+apiVersion: storage.crossplane.io/v1alpha1
+kind: StorageClaim
+metadata:
+  name: ${{ values.environmentName }}-storage-claim
+  namespace: ${{ values.environmentName }}
+  labels:
+    backstage.io/environment: ${{ values.environmentName }}
+    backstage.io/owner: ${{ values.owner }}
+  annotations:
+    backstage.io/created-by: scaffolder
+spec:
+  parameters:
+    size: ${{ values.storageSize }}
+    storageClass: ${{ values.storageClass }}
+    environmentName: ${{ values.environmentName }}
+    accessMode: ReadWriteOnce
+  compositionRef:
+    name: storage-composition
+  writeConnectionSecretsToNamespace: ${{ values.environmentName }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ${{ values.environmentName }}-app-storage
+  namespace: ${{ values.environmentName }}
+  labels:
+    backstage.io/environment: ${{ values.environmentName }}
+    backstage.io/owner: ${{ values.owner }}
+  annotations:
+    backstage.io/created-by: scaffolder
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ${{ values.storageClass }}
+  resources:
+    requests:
+      storage: ${{ values.storageSize }}

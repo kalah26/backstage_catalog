@@ -1,0 +1,25 @@
+{% if values.databaseNeeded and not values.useExistingDatabase %}
+apiVersion: database.crossplane.io/v1alpha1
+kind: DatabaseClaim
+metadata:
+  name: ${{ values.environmentName }}-db-claim
+  namespace: ${{ values.environmentName }}
+  labels:
+    backstage.io/environment: ${{ values.environmentName }}
+    backstage.io/owner: ${{ values.owner }}
+  annotations:
+    backstage.io/created-by: scaffolder
+    crossplane.io/composite-resource: ${{ values.environmentName }}-db
+spec:
+  parameters:
+    engine: ${{ values.databaseType }}
+    storageSize: ${{ values.databaseSize }}
+    instanceClass: db.t3.micro
+    environmentName: ${{ values.environmentName }}
+    backupRetentionDays: 7
+  compositionRef:
+    name: database-composition-${{ values.databaseType }}
+  writeConnectionSecretsToNamespace: ${{ values.environmentName }}
+  writeConnectionSecretToRef:
+    name: ${{ values.environmentName }}-db-connection
+{% endif %}

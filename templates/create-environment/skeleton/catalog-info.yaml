@@ -1,0 +1,62 @@
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: ${{ values.environmentName }}
+  description: ${{ values.description }}
+  annotations:
+    backstage.io/kubernetes-namespace: ${{ values.environmentName }}
+    crossplane.io/environment: ${{ values.environmentName }}
+    argocd.argoproj.io/application: ${{ values.environmentName }}
+  tags:
+    - environment
+    - ${{ values.ciChoice }}
+    {% if values.databaseNeeded %}
+    - database
+    - ${{ values.databaseType }}
+    {% endif %}
+spec:
+  owner: ${{ values.owner }}
+  type: environment
+  lifecycle: development
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: ${{ values.environmentName }}-namespace
+  description: Kubernetes namespace for ${{ values.environmentName }}
+  annotations:
+    backstage.io/kubernetes-id: ${{ values.environmentName }}
+    backstage.io/kubernetes-namespace: ${{ values.environmentName }}
+spec:
+  type: kubernetes-namespace
+  owner: ${{ values.owner }}
+  system: ${{ values.environmentName }}
+{% if values.databaseNeeded and not values.useExistingDatabase %}
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: ${{ values.environmentName }}-database
+  description: ${{ values.databaseType | title }} database for ${{ values.environmentName }}
+  annotations:
+    backstage.io/kubernetes-id: ${{ values.environmentName }}-db
+    backstage.io/kubernetes-namespace: ${{ values.environmentName }}
+    crossplane.io/claim: ${{ values.environmentName }}-db-claim
+spec:
+  type: crossplane-database
+  owner: ${{ values.owner }}
+  system: ${{ values.environmentName }}
+{% endif %}
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: ${{ values.environmentName }}-storage
+  description: Persistent storage for ${{ values.environmentName }}
+  annotations:
+    backstage.io/kubernetes-id: ${{ values.environmentName }}-storage
+    backstage.io/kubernetes-namespace: ${{ values.environmentName }}
+spec:
+  type: kubernetes-pvc
+  owner: ${{ values.owner }}
+  system: ${{ values.environmentName }}

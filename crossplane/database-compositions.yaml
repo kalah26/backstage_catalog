@@ -1,0 +1,195 @@
+# Database Composition for PostgreSQL
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xdatabases.database.crossplane.io
+spec:
+  group: database.crossplane.io
+  names:
+    kind: XDatabase
+    plural: xdatabases
+  claimNames:
+    kind: DatabaseClaim
+    plural: databaseclaims
+  versions:
+  - name: v1alpha1
+    served: true
+    referenceable: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              parameters:
+                type: object
+                properties:
+                  engine:
+                    type: string
+                    enum: ["postgresql", "mysql", "mongodb"]
+                  storageSize:
+                    type: string
+                  instanceClass:
+                    type: string
+                  environmentName:
+                    type: string
+                  backupRetentionDays:
+                    type: integer
+                required:
+                - engine
+                - storageSize
+                - environmentName
+            required:
+            - parameters
+          status:
+            type: object
+            properties:
+              endpoint:
+                type: string
+              port:
+                type: string
+              database:
+                type: string
+---
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: database-composition-postgresql
+  labels:
+    database.crossplane.io/engine: postgresql
+spec:
+  compositeTypeRef:
+    apiVersion: database.crossplane.io/v1alpha1
+    kind: XDatabase
+  
+  functions:
+  - name: create-postgresql
+    type: function
+    step: create-database
+    input:
+      apiVersion: pt.fn.crossplane.io/v1beta1
+      kind: Resources
+      resources:
+      - name: postgresql-instance
+        base:
+          apiVersion: rds.aws.crossplane.io/v1alpha1
+          kind: DBInstance
+          spec:
+            forProvider:
+              allocatedStorage: 20
+              autoMinorVersionUpgrade: true
+              backupRetentionPeriod: 7
+              dbInstanceClass: db.t3.micro
+              dbName: app
+              engine: postgres
+              engineVersion: "13.7"
+              multiAZ: false
+              publiclyAccessible: false
+              storageEncrypted: true
+              storageType: gp2
+              vpcSecurityGroupIds:
+              - sg-default
+              dbSubnetGroupName: default
+            writeConnectionSecretsToNamespace: crossplane-system
+        patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.storageSize
+          toFieldPath: spec.forProvider.allocatedStorage
+          transforms:
+          - type: string
+            string:
+              regexp:
+                match: '(\d+)Gi'
+                group: 1
+              type: regexp
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.instanceClass
+          toFieldPath: spec.forProvider.dbInstanceClass
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.environmentName
+          toFieldPath: spec.forProvider.dbName
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.backupRetentionDays
+          toFieldPath: spec.forProvider.backupRetentionPeriod
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.environmentName
+          toFieldPath: spec.writeConnectionSecretsToNamespace
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.environmentName
+          toFieldPath: spec.writeConnectionSecretToRef.name
+          transforms:
+          - type: string
+            string:
+              fmt: "%s-db-connection"
+        - type: ToCompositeFieldPath
+          fromFieldPath: status.atProvider.endpoint
+          toFieldPath: status.endpoint
+        - type: ToCompositeFieldPath
+          fromFieldPath: status.atProvider.port
+          toFieldPath: status.port
+---
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: database-composition-mysql
+  labels:
+    database.crossplane.io/engine: mysql
+spec:
+  compositeTypeRef:
+    apiVersion: database.crossplane.io/v1alpha1
+    kind: XDatabase
+  
+  functions:
+  - name: create-mysql
+    type: function
+    step: create-database
+    input:
+      apiVersion: pt.fn.crossplane.io/v1beta1
+      kind: Resources
+      resources:
+      - name: mysql-instance
+        base:
+          apiVersion: rds.aws.crossplane.io/v1alpha1
+          kind: DBInstance
+          spec:
+            forProvider:
+              allocatedStorage: 20
+              autoMinorVersionUpgrade: true
+              backupRetentionPeriod: 7
+              dbInstanceClass: db.t3.micro
+              dbName: app
+              engine: mysql
+              engineVersion: "8.0"
+              multiAZ: false
+              publiclyAccessible: false
+              storageEncrypted: true
+              storageType: gp2
+            writeConnectionSecretsToNamespace: crossplane-system
+        patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.storageSize
+          toFieldPath: spec.forProvider.allocatedStorage
+          transforms:
+          - type: string
+            string:
+              regexp:
+                match: '(\d+)Gi'
+                group: 1
+              type: regexp
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.instanceClass
+          toFieldPath: spec.forProvider.dbInstanceClass
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.environmentName
+          toFieldPath: spec.forProvider.dbName
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.environmentName
+          toFieldPath: spec.writeConnectionSecretsToNamespace
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.environmentName
+          toFieldPath: spec.writeConnectionSecretToRef.name
+          transforms:
+          - type: string
+            string:
+              fmt: "%s-db-connection"

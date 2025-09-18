@@ -61,19 +61,20 @@ spec:
 apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
-  name: redline-test-app
-  description: Real Python App Claim using Crossplane
+  name: app-python-claim
+  description: Python App Claim Template using Crossplane
   annotations:
-    backstage.io/kubernetes-id: redline-test-app
-    backstage.io/kubernetes-namespace: default
+    backstage.io/kubernetes-id: app-python-claim
+    crossplane.io/composite-resource-definition: apps.example.crossplane.io
+    crossplane.io/composition: app-python
   tags:
     - crossplane
     - python
     - app
     - claim
-    - redline
+    - template
 spec:
-  type: service
+  type: crossplane-claim
   owner: group:default/admin
   system: redline
   lifecycle: production

@@ -1,0 +1,70 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ${{ values.environmentName }}-app
+  namespace: argocd
+  labels:
+    backstage.io/environment: ${{ values.environmentName }}
+    backstage.io/owner: ${{ values.owner }}
+  annotations:
+    backstage.io/created-by: scaffolder
+    argocd.argoproj.io/sync-wave: "1"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: ${{ values.repoUrl }}
+    targetRevision: HEAD
+    path: manifests/overlays/development
+    helm:
+      valueFiles:
+        - values-${{ values.environmentName }}.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ${{ values.environmentName }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=false  # Namespace created by Backstage
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+  revisionHistoryLimit: 10
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: ${{ values.environmentName }}-project
+  namespace: argocd
+  labels:
+    backstage.io/environment: ${{ values.environmentName }}
+spec:
+  description: "Project for ${{ values.environmentName }} environment"
+  sourceRepos:
+    - ${{ values.repoUrl }}
+  destinations:
+    - namespace: ${{ values.environmentName }}
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
+  roles:
+    - name: developer
+      description: Developer access to ${{ values.environmentName }}
+      policies:
+        - p, proj:${{ values.environmentName }}-project:developer, applications, get, ${{ values.environmentName }}-project/*, allow
+        - p, proj:${{ values.environmentName }}-project:developer, applications, sync, ${{ values.environmentName }}-project/*, allow
+      groups:
+        - ${{ values.owner }}

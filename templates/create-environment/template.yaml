@@ -1,0 +1,224 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: create-environment-template
+  title: Create Development Environment
+  description: Create a complete development environment with namespace, database, storage, and CI/CD pipeline
+  tags:
+    - environment
+    - crossplane
+    - kubernetes
+    - database
+    - ci-cd
+spec:
+  owner: group:default/admin
+  type: environment
+
+  parameters:
+    - title: Environment Configuration
+      required:
+        - environmentName
+        - owner
+      properties:
+        environmentName:
+          title: Environment Name
+          type: string
+          description: Unique name for your environment (lowercase, no spaces)
+          pattern: '^[a-z0-9-]+$'
+          ui:autofocus: true
+        owner:
+          title: Owner
+          type: string
+          description: Owner of the environment
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+        description:
+          title: Description
+          type: string
+          description: Brief description of this environment's purpose
+
+    - title: Database Configuration
+      properties:
+        databaseNeeded:
+          title: Database Required
+          type: boolean
+          description: Does this environment need a database?
+          default: true
+        databaseType:
+          title: Database Type
+          type: string
+          description: Type of database to provision
+          default: postgresql
+          enum:
+            - postgresql
+            - mysql
+            - mongodb
+          enumNames:
+            - PostgreSQL
+            - MySQL
+            - MongoDB
+          ui:widget: select
+        databaseSize:
+          title: Database Storage Size
+          type: string
+          description: Storage size for the database
+          default: 10Gi
+          enum:
+            - 1Gi
+            - 5Gi
+            - 10Gi
+            - 20Gi
+            - 50Gi
+          ui:widget: select
+        useExistingDatabase:
+          title: Use Existing Database
+          type: boolean
+          description: Connect to an existing database instead of creating new one
+          default: false
+
+    - title: Storage Configuration
+      properties:
+        storageSize:
+          title: Application Storage Size
+          type: string
+          description: Persistent storage size for applications
+          default: 5Gi
+          enum:
+            - 1Gi
+            - 5Gi
+            - 10Gi
+            - 20Gi
+            - 50Gi
+          ui:widget: select
+        storageClass:
+          title: Storage Class
+          type: string
+          description: Kubernetes storage class to use
+          default: standard
+          enum:
+            - standard
+            - fast-ssd
+            - slow-hdd
+          ui:widget: select
+
+    - title: CI/CD Configuration
+      required:
+        - ciChoice
+      properties:
+        ciChoice:
+          title: CI/CD Platform
+          type: string
+          description: Choose your CI/CD platform
+          default: gitlab
+          enum:
+            - gitlab
+            - jenkins
+            - github-actions
+          enumNames:
+            - GitLab CI/CD
+            - Jenkins
+            - GitHub Actions
+          ui:widget: select
+        repoUrl:
+          title: Application Repository
+          type: string
+          description: Repository URL for the application to deploy
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts:
+              - gitlab.com
+              - github.com
+
+  steps:
+    - id: fetchBase
+      name: Fetch Environment Template
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          environmentName: ${{ parameters.environmentName }}
+          owner: ${{ parameters.owner }}
+          description: ${{ parameters.description }}
+          databaseNeeded: ${{ parameters.databaseNeeded }}
+          databaseType: ${{ parameters.databaseType }}
+          databaseSize: ${{ parameters.databaseSize }}
+          useExistingDatabase: ${{ parameters.useExistingDatabase }}
+          storageSize: ${{ parameters.storageSize }}
+          storageClass: ${{ parameters.storageClass }}
+          ciChoice: ${{ parameters.ciChoice }}
+          repoUrl: ${{ parameters.repoUrl }}
+
+    - id: createNamespace
+      name: Create Kubernetes Namespace
+      action: kubernetes:apply
+      input:
+        manifestPath: namespace.yaml
+
+    - id: createDatabaseClaim
+      name: Create Database Claim
+      if: ${{ parameters.databaseNeeded and not parameters.useExistingDatabase }}
+      action: kubernetes:apply
+      input:
+        manifestPath: database-claim.yaml
+
+    - id: createStorageClaim
+      name: Create Storage Claim
+      action: kubernetes:apply
+      input:
+        manifestPath: storage-claim.yaml
+
+    - id: setupArgoCD
+      name: Setup ArgoCD Application
+      action: kubernetes:apply
+      input:
+        manifestPath: argocd-application.yaml
+
+    - id: triggerCIPipeline
+      name: Trigger CI/CD Pipeline
+      if: ${{ parameters.ciChoice === 'gitlab' }}
+      action: http:backstage:request
+      input:
+        method: POST
+        url: https://gitlab.com/api/v4/projects/${{ parameters.repoUrl | parseRepoUrl | pick('repo') }}/trigger/pipeline
+        headers:
+          'PRIVATE-TOKEN': ${{ secrets.GITLAB_TOKEN }}
+        body:
+          ref: main
+          variables:
+            ENVIRONMENT_NAME: ${{ parameters.environmentName }}
+            DEPLOY_NAMESPACE: ${{ parameters.environmentName }}
+
+    - id: registerEnvironment
+      name: Register Environment in Catalog
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps.fetchBase.output.targetDir }}
+        catalogInfoPath: '/catalog-info.yaml'
+
+  output:
+    links:
+      - title: Environment Dashboard
+        url: /catalog/default/system/${{ parameters.environmentName }}
+      - title: Kubernetes Namespace
+        url: /kubernetes/ns/${{ parameters.environmentName }}
+      - title: ArgoCD Application
+        url: /argocd/applications/${{ parameters.environmentName }}
+    text:
+      - title: Environment Created
+        content: |
+          Your environment **${{ parameters.environmentName }}** has been successfully created!
+          
+          **Resources Provisioned:**
+          - Kubernetes Namespace: `${{ parameters.environmentName }}`
+          {% if parameters.databaseNeeded %}
+          - Database: ${{ parameters.databaseType }} (${{ parameters.databaseSize }})
+          {% endif %}
+          - Storage: ${{ parameters.storageSize }} (${{ parameters.storageClass }})
+          - CI/CD: ${{ parameters.ciChoice }}
+          
+          **Next Steps:**
+          1. Check the ArgoCD application for deployment status
+          2. Review the environment dashboard for resource health
+          3. Access database credentials from the secrets management
